@@ -1,0 +1,64 @@
+! ===== R1 - ACLs & SSH hardening (apply ON TOP of Lab 02 R1.txt) =====
+enable
+configure terminal
+!
+! ---------- SSH-only management ----------
+ip domain-name lab.local
+username admin privilege 15 secret Adm1nP@ss!
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+ip ssh time-out 60
+ip ssh authentication-retries 3
+login block-for 120 attempts 3 within 60
+!
+! ---------- Policy 3: only IT may manage R1 (standard ACL on VTY) ----------
+ip access-list standard VTY_ACCESS
+ remark Only IT VLAN may SSH to R1
+ permit 192.168.20.0 0.0.0.255
+ deny any
+exit
+!
+line vty 0 4
+ login local
+ transport input ssh
+ access-class VTY_ACCESS in
+ exec-timeout 5 0
+line vty 5 15
+ transport input none
+ login local
+exit
+!
+! ---------- Policy 1: SALES least privilege (extended ACL, near SOURCE) ----------
+ip access-list extended SALES_IN
+ remark Allow DHCP requests to R1
+ permit udp any any eq 67
+ remark Allow DNS + web to SRV1 only
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.30.10 eq 53
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.30.10 eq 80
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.30.10 eq 443
+ remark Allow replies to sessions IT started (IT can support SALES)
+ permit tcp 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255 established
+ permit icmp 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255 echo-reply
+ remark Block SALES from IT, SERVERS and MGMT
+ deny ip 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255
+ deny ip 192.168.10.0 0.0.0.255 192.168.30.0 0.0.0.255
+ deny ip 192.168.10.0 0.0.0.255 192.168.99.0 0.0.0.255
+ remark Everything else (e.g. internet) allowed
+ permit ip 192.168.10.0 0.0.0.255 any
+exit
+!
+interface GigabitEthernet0/0.10
+ ip access-group SALES_IN in
+!
+! ---------- Policy 2: only IT may reach MGMT VLAN (standard ACL, near DESTINATION) ----------
+ip access-list standard MGMT_PROTECT
+ remark Only IT VLAN may reach switch management SVIs
+ permit 192.168.20.0 0.0.0.255
+ deny any
+exit
+!
+interface GigabitEthernet0/0.99
+ ip access-group MGMT_PROTECT out
+!
+end
+copy running-config startup-config

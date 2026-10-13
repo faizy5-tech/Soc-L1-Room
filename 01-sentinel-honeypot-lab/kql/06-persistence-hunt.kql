@@ -1,0 +1,8 @@
+// Post-compromise hunt: did anything change on the host?
+// 4720 user created | 4732 member added to local group
+// 4698 scheduled task created | 1102 security log cleared
+SecurityEvent
+| where TimeGenerated > ago(7d)
+| where EventID in (4720, 4732, 4698, 1102)
+| project TimeGenerated, Computer, EventID, Activity, Account, TargetUserName, SubjectUserName
+| sort by TimeGenerated desc

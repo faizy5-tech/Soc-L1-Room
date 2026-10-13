@@ -1,0 +1,25 @@
+! ===== SW2 - SSH-only management (apply ON TOP of Lab 02 SW2.txt) =====
+enable
+configure terminal
+ip domain-name lab.local
+username admin privilege 15 secret Adm1nP@ss!
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+!
+ip access-list standard VTY_ACCESS
+ remark Only IT VLAN may SSH to SW2
+ permit 192.168.20.0 0.0.0.255
+ deny any
+exit
+!
+line vty 0 4
+ login local
+ transport input ssh
+ access-class VTY_ACCESS in
+ exec-timeout 5 0
+line vty 5 15
+ transport input none
+ login local
+!
+end
+copy running-config startup-config

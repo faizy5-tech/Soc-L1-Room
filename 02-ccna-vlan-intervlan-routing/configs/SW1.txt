@@ -1,0 +1,87 @@
+! ===== SW1 - Cisco 2960 =====
+enable
+configure terminal
+hostname SW1
+no ip domain-lookup
+enable secret Cisco123!
+service password-encryption
+banner motd # Authorised access only. Activity is monitored. #
+!
+vlan 10
+ name SALES
+vlan 20
+ name IT
+vlan 30
+ name SERVERS
+vlan 99
+ name MGMT
+vlan 666
+ name PARKING
+vlan 999
+ name NATIVE
+exit
+!
+! ---- Trunks: static, no DTP, unused native VLAN, pruned allowed list ----
+interface GigabitEthernet0/1
+ description TRUNK to R1 Gi0/0
+ switchport mode trunk
+ switchport trunk native vlan 999
+ switchport trunk allowed vlan 10,20,30,99,999
+ switchport nonegotiate
+!
+interface GigabitEthernet0/2
+ description TRUNK to SW2 Gi0/1
+ switchport mode trunk
+ switchport trunk native vlan 999
+ switchport trunk allowed vlan 10,20,30,99,999
+ switchport nonegotiate
+!
+! ---- Access ports: hardened ----
+interface FastEthernet0/1
+ description PC1 - SALES
+ switchport mode access
+ switchport access vlan 10
+ switchport nonegotiate
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security mac-address sticky
+ switchport port-security violation restrict
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+!
+interface FastEthernet0/11
+ description PC2 - IT
+ switchport mode access
+ switchport access vlan 20
+ switchport nonegotiate
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security mac-address sticky
+ switchport port-security violation restrict
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+!
+! ---- Unused ports: parked and shut ----
+interface range FastEthernet0/2 - 10 , FastEthernet0/12 - 24
+ switchport mode access
+ switchport access vlan 666
+ shutdown
+!
+! ---- Management SVI ----
+interface Vlan1
+ shutdown
+interface Vlan99
+ description MGMT
+ ip address 192.168.99.11 255.255.255.0
+ no shutdown
+!
+ip default-gateway 192.168.99.1
+!
+line console 0
+ password Cisco123!
+ login
+ logging synchronous
+ exec-timeout 10 0
+!
+end
+copy running-config startup-config

@@ -1,0 +1,6 @@
+// Most-guessed account names - shows attacker wordlists (administrator, admin, user, test...)
+SecurityEvent
+| where TimeGenerated > ago(7d)
+| where EventID == 4625
+| summarize Attempts = count(), SourceIPs = dcount(IpAddress) by TargetUserName
+| top 20 by Attempts desc

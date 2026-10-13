@@ -1,0 +1,12 @@
+// Failed logons (Event ID 4625) grouped by attacker IP, last 24h
+// Use: first triage view - who is hammering the honeypot and how hard?
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| where isnotempty(IpAddress) and IpAddress != "-"
+| summarize FailedAttempts = count(),
+            DistinctAccounts = dcount(TargetUserName),
+            FirstSeen = min(TimeGenerated),
+            LastSeen  = max(TimeGenerated)
+          by IpAddress, Computer
+| sort by FailedAttempts desc

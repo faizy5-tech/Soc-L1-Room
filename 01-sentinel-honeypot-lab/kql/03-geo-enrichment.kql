@@ -1,0 +1,10 @@
+// Enrich failed-logon source IPs with geolocation from the "geoip" watchlist
+// Watchlist columns expected: network (CIDR), latitude, longitude, cityname, countryname
+let GeoIPDB = _GetWatchlist("geoip");
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| where isnotempty(IpAddress) and IpAddress != "-"
+| evaluate ipv4_lookup(GeoIPDB, IpAddress, network)
+| summarize FailedAttempts = count() by IpAddress, countryname, cityname
+| sort by FailedAttempts desc

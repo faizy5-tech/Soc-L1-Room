@@ -1,0 +1,11 @@
+// Workbook map data source (Visualization: Map, Location: Latitude/Longitude, Size by: FailureCount)
+let GeoIPDB = _GetWatchlist("geoip");
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| where isnotempty(IpAddress) and IpAddress != "-"
+| summarize FailureCount = count() by IpAddress
+| evaluate ipv4_lookup(GeoIPDB, IpAddress, network)
+| project IpAddress, FailureCount,
+          Latitude = todouble(latitude), Longitude = todouble(longitude),
+          Location = strcat(cityname, ", ", countryname)

@@ -1,0 +1,61 @@
+! ===== R1 - Cisco 2911 - Router-on-a-Stick =====
+enable
+configure terminal
+hostname R1
+no ip domain-lookup
+enable secret Cisco123!
+service password-encryption
+banner motd # Authorised access only. Activity is monitored. #
+!
+! ---- DHCP (exclude gateway + static range) ----
+ip dhcp excluded-address 192.168.10.1 192.168.10.10
+ip dhcp excluded-address 192.168.20.1 192.168.20.10
+!
+ip dhcp pool SALES
+ network 192.168.10.0 255.255.255.0
+ default-router 192.168.10.1
+ dns-server 192.168.30.10
+!
+ip dhcp pool IT
+ network 192.168.20.0 255.255.255.0
+ default-router 192.168.20.1
+ dns-server 192.168.30.10
+!
+! ---- Trunk to SW1: physical interface carries no IP ----
+interface GigabitEthernet0/0
+ description TRUNK to SW1 Gi0/1
+ no ip address
+ no shutdown
+!
+interface GigabitEthernet0/0.10
+ description VLAN10 SALES gateway
+ encapsulation dot1Q 10
+ ip address 192.168.10.1 255.255.255.0
+!
+interface GigabitEthernet0/0.20
+ description VLAN20 IT gateway
+ encapsulation dot1Q 20
+ ip address 192.168.20.1 255.255.255.0
+!
+interface GigabitEthernet0/0.30
+ description VLAN30 SERVERS gateway
+ encapsulation dot1Q 30
+ ip address 192.168.30.1 255.255.255.0
+!
+interface GigabitEthernet0/0.99
+ description VLAN99 MGMT gateway
+ encapsulation dot1Q 99
+ ip address 192.168.99.1 255.255.255.0
+!
+interface GigabitEthernet0/0.999
+ description Native VLAN (unused, no IP)
+ encapsulation dot1Q 999 native
+!
+line console 0
+ password Cisco123!
+ login
+ logging synchronous
+ exec-timeout 10 0
+!
+end
+copy running-config startup-config

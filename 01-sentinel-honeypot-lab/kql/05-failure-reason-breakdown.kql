@@ -1,0 +1,17 @@
+// Decode 4625 SubStatus to see WHY logons failed
+// 0xC0000064 = user does not exist   -> attacker guessing usernames (spray / enumeration)
+// 0xC000006A = wrong password         -> attacker knows a valid username (more dangerous)
+// 0xC0000234 = account locked out
+// 0xC0000072 = account disabled
+SecurityEvent
+| where TimeGenerated > ago(7d)
+| where EventID == 4625
+| extend Reason = case(
+    SubStatus =~ "0xc0000064", "User does not exist",
+    SubStatus =~ "0xc000006a", "Bad password (valid user)",
+    SubStatus =~ "0xc0000234", "Account locked out",
+    SubStatus =~ "0xc0000072", "Account disabled",
+    SubStatus =~ "0xc000006f", "Outside logon hours",
+    strcat("Other: ", SubStatus))
+| summarize Count = count() by Reason
+| sort by Count desc
